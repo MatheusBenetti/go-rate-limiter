@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+
+  redis:  
+    image: redis
+    volumes:
+      - .:/redis
+    ports:
+      - "6379:6379"
