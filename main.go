@@ -48,17 +48,15 @@ func (rs *RedisStorage) Set(ctx context.Context, key string, value interface{}, 
 type RateLimiter struct {
 	storage              Storage
 	defaultLimit         int
-	defaultExpiration    time.Duration
 	maxRequestsPerSecond int
 	blockDuration        time.Duration
 }
 
 // NewRateLimiter cria um novo rate limiter com o limite padrão e o intervalo de expiração padrão.
-func NewRateLimiter(storage Storage, defaultLimit int, defaultExpiration, blockDuration time.Duration, maxRequestsPerSecond int) *RateLimiter {
+func NewRateLimiter(storage Storage, defaultLimit int, blockDuration time.Duration, maxRequestsPerSecond int) *RateLimiter {
 	return &RateLimiter{
 		storage:              storage,
 		defaultLimit:         defaultLimit,
-		defaultExpiration:    defaultExpiration,
 		maxRequestsPerSecond: maxRequestsPerSecond,
 		blockDuration:        blockDuration,
 	}
@@ -114,7 +112,6 @@ func main() {
 
 	// Obtém configurações de limite do ambiente ou define valores padrão.
 	defaultLimit := getIntEnv("DEFAULT_LIMIT", 3)
-	defaultExpiration := getDurationEnv("DEFAULT_EXPIRATION", time.Minute)
 	maxRequestsPerSecond := getIntEnv("MAX_REQUESTS_PER_SECOND", 5)
 	blockDuration := getDurationEnv("BLOCK_DURATION", time.Minute)
 
@@ -131,7 +128,7 @@ func main() {
 	redisStorage := NewRedisStorage(redisClient)
 
 	// Crie um novo rate limiter com os limites configurados e o armazenamento Redis.
-	rateLimiter := NewRateLimiter(redisStorage, defaultLimit, defaultExpiration, blockDuration, maxRequestsPerSecond)
+	rateLimiter := NewRateLimiter(redisStorage, defaultLimit, blockDuration, maxRequestsPerSecond)
 
 	// Crie um manipulador simples que apenas imprime uma mensagem.
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -144,7 +141,7 @@ func main() {
 		apiKey := r.Header.Get("API_KEY")
 
 		if !rateLimiter.Allow(ip, apiKey) {
-			http.Error(w, "Você atingiu o número máximo de requisições ou ações permitidas dentro de um determinado período de tempo", http.StatusTooManyRequests)
+			http.Error(w, "you have reached the maximum number of requests or actions allowed within a certain time frame", http.StatusTooManyRequests)
 			return
 		}
 
