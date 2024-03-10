@@ -1,46 +1,86 @@
 package main
 
 import (
-	"fmt"
-	"log"
+	"net"
 	"net/http"
-	"os"
+	"sync"
+	"time"
 
-	"github.com/MatheusBenetti/go-rate-limiter/limiter"
-	"github.com/go-redis/redis/v8"
-	"github.com/joho/godotenv"
+	"github.com/go-chi/chi"
+)
+
+var (
+	apiKeyRateLimit = 10 // 10 requests per second per API key
+	ipRateLimit     = 5  // 5 requests per second per IP
+	apiKeyMap       = make(map[string]int)
+	ipMap           = make(map[string]int)
+	mutex           = sync.Mutex{}
 )
 
 func main() {
-	// Carregar configurações do arquivo .env
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	r := chi.NewRouter()
 
-	// Criar cliente Redis
-	redisClient := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_ADDR"),
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0, // use default DB
+	// Middleware to enforce rate limits
+	r.Use(rateLimitMiddleware)
+
+	// Routes
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Hello, world!"))
 	})
 
-	// Inicializar o limiter
-	rateLimiter, err := limiter.NewRedisLimiter(redisClient)
-	if err != nil {
-		log.Fatalf("Error initializing rate limiter: %v", err)
+	http.ListenAndServe(":8080", r)
+}
+
+func rateLimitMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get API key from request header
+		apiKey := r.Header.Get("API-Key")
+
+		// Check API key rate limit
+		if apiKey != "" {
+			if !checkRateLimit(apiKeyMap, apiKey, apiKeyRateLimit) {
+				http.Error(w, "API Key rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+		} else {
+			// If no API key, check IP rate limit
+			ip := getClientIP(r)
+			if !checkRateLimit(ipMap, ip, ipRateLimit) {
+				http.Error(w, "IP rate limit exceeded", http.StatusTooManyRequests)
+				return
+			}
+		}
+
+		// Call the next handler
+		next.ServeHTTP(w, r)
+	})
+}
+
+func checkRateLimit(limitMap map[string]int, key string, limit int) bool {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if count, ok := limitMap[key]; ok {
+		if count >= limit {
+			return false
+		}
+		limitMap[key]++
+	} else {
+		limitMap[key] = 1
 	}
 
-	// Definir o middleware
-	rateLimitMiddleware := limiter.NewMiddleware(rateLimiter)
+	// Schedule removal of key after 1 second
+	go func() {
+		time.Sleep(time.Second)
+		mutex.Lock()
+		defer mutex.Unlock()
+		delete(limitMap, key)
+	}()
 
-	// Handler para a rota raiz com o middleware aplicado
-	http.HandleFunc("/", rateLimitMiddleware.Handle(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, "Request allowed")
-	}))
+	return true
+}
 
-	// Iniciar o servidor na porta 8080
-	fmt.Println("Server listening on port 8080")
-	http.ListenAndServe(":8080", nil)
+func getClientIP(r *http.Request) string {
+	ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return ip
 }
