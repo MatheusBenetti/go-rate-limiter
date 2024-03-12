@@ -1,16 +1,44 @@
-version: '3'
+version: '3.7'
 
 services:
-  web:
-    build: .
-    ports:
-      - "8080:8080"
-    volumes:
-      - .:/app
-
-  redis:  
-    image: redis
-    volumes:
-      - .:/redis
+  redis:
+    image: redis:7.0-alpine
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 15s
+      timeout: 3s
+      retries: 4
     ports:
       - "6379:6379"
+    networks:
+      - rate-limit
+
+  go-app:
+    build:
+      context: .
+      dockerfile: Dockerfile-app
+    container_name: go-app
+    ports:
+      - "8080:8080"
+    networks:
+      - rate-limit
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  go-cli-test:
+    build:
+      context: .
+      dockerfile: Dockerfile-cli-test
+    image: go-cli-test
+    container_name: go-cli-test
+    networks:
+      - rate-limit
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  rate-limit:
