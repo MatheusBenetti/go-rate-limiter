@@ -20,14 +20,6 @@ func NewRegisterAPIKeyUseCase(
 	}
 }
 
-// Execute This saves a new request depending on API Key.
-// If we have a request from an endpoint has API Key, we persist using it:
-//  1. We need to confirm if the API key has been blocked for exceeding the maximum number of requests.
-//  2. We find the given API Key (input.Value) in the data source and get the configuration.
-//  3. We save the API key in the database using the RateLimiter.Allow() and using the variables
-//     or if we already have the same IP, we update the requests array.
-//  4. We execute the validation and update/insert the data in the database.
-//  5. If we have reached the maximum request amount, we save the key into the database.
 func (apk *RegisterAPIKey) Execute(
 	ctx context.Context,
 	input dto.APIKeyRequestSave,

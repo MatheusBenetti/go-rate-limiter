@@ -31,7 +31,7 @@ services:
   go-cli-test:
     build:
       context: .
-      dockerfile: Dockerfile-cli-test
+      dockerfile: Dockerfile-test
     image: go-cli-test
     container_name: go-cli-test
     networks:

@@ -1,4 +1,4 @@
-FROM golang:1.21.5-bookworm as builder
+FROM golang:latest as builder
 WORKDIR /app
 COPY . .
 RUN make init && make build
