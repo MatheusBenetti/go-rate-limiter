@@ -9,8 +9,8 @@ import (
 	"github.com/MatheusBenetti/go-rate-limiter/internal/dto"
 	"github.com/MatheusBenetti/go-rate-limiter/internal/entity"
 	"github.com/MatheusBenetti/go-rate-limiter/internal/entity/mock"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/mock/gomock"
 )
 
 func TestRegisterIPRequest_Execute(t *testing.T) {

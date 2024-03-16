@@ -18,7 +18,7 @@ services:
   go-app:
     build:
       context: .
-      dockerfile: Dockerfile-app
+      dockerfile: Dockerfile
     container_name: go-app
     ports:
       - "8080:8080"

@@ -15,7 +15,7 @@ build:
 
 .PHONY: run
 run:
-	docker compose -f docker-compose.yaml up -d --build
+	docker compose -f docker-compose.yml up -d --build
 
 .PHONY: build-cli-test
 build-cli-test:
